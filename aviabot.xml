@@ -1,0 +1,124 @@
+<context>
+
+    <pattern name="City" value="entity://cities"/>
+
+    <input pattern="/start">
+        <output value="Здравствуйте! Вас приветствует авиакомпания Зенавиа. Здесь вы можете забронировать авиабилеты в любую точку мира. Скажите, куда вы желаете улететь?"/>
+
+        <context id="menu">
+            <input id="main">
+                <pattern value="* [$Date] * [$To::City] * [$Date] *"/>
+                <pattern value="* [$Date] * (из|от) * $From::City * [$Date] *"/>
+                <pattern value="* [$Date] * [из|от] * $From::City * $To::City * [$Date] *"/>
+
+                <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                <context id="to" if="empty($To)">
+                    <output value="В какой город вы собираетесь полететь?"/>
+                    <input id="to">
+                        <pattern value="* $Date *"/>
+                        <pattern value="* [$Date] * [до|в|во|на] [город*] $To::City [[из] [город*] $From::City] * [$Date] *"/>
+                        <pattern value="* [$Date] (из|от) $From::City [[в|во|до] $To::City] * [$Date] *"/>
+
+                        <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                        <context id="to" if="empty($To)"/>
+                        <context id="from" if="empty($From)"/>
+                        <context id="date" if="empty($Date) or past($Date)"/>
+                        <context id="back"/>
+                    </input>
+                    <input pattern="*" id="to_fail">
+                        <output value="Простите, не могли бы вы повторить название города?"/>
+                    </input>
+                </context>
+
+                <context id="from" if="empty($From)">
+                    <output value="Откуда вы летите?"/>
+                    <input id="from">
+                        <pattern value="* [$Date] * [[из|от] * $From::City] [[в|во|до] * $To::City] * [$Date] *"/>
+
+                        <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                        <context id="from" if="empty($From)"/>
+                        <context id="date" if="empty($Date) or past($Date)"/>
+                        <context id="back"/>
+                    </input>
+
+                    <input pattern="*" id="from_fail">
+                        <output value="Простите, не могли бы вы повторить название города?"/>
+                    </input>
+                </context>
+
+                <context id="date" if="empty($Date) or past($Date)">
+                    <output value="На какую дату вы запланировали поездку?"/>
+                    <input pattern="* $Date *" id="date">
+                        <output value="Простите, не могли бы вы повторить дату поездки?" if="past($Date)"/>
+                        <context id="back" if="future($Date)"/>
+                    </input>
+                    <input pattern="*" id="date_fail">
+                        <output value="Простите, не могли бы вы повторить дату поездки?"/>
+                    </input>
+                </context>
+
+                <context id="back">
+                    <output value="Нужны ли вам обратные билеты?"/>
+
+                    <input id="back">
+                        <pattern value="* $Back::Date *"/>
+                        <pattern value="* (да|*давай*|угу|ага|нужен|нужн*) *"/>
+
+                        <context if="empty($Back)">
+                            <output value="На какую дату вам нужен обратный билет?"/>
+                            <input pattern="* [$Back::Date] *" id="back_date">
+                                <output value="Простите, не могли бы вы повторить дату?" if="empty($Back)"/>
+                                <context id="order" if="full($Back)"/>
+                            </input>
+                        </context>
+
+                        <context id="order"/>
+                    </input>
+
+                    <input pattern="* [да нет|не (нужен|нужно)] *" id="back_no">
+                        <context id="order"/>
+                    </input>
+                </context>
+
+                <context id="order">
+
+                    <var name="From">
+                        <script>
+                            <![CDATA[
+                            var city;
+                            for (var i = 0; i < $From.length; i++) {
+                                var c = $From[i];
+                                city = !city || city.population < c.population ? c : city;
+                            }
+                            if (!city) city = $From;
+                            city.name;
+                        ]]>
+                        </script>
+                    </var>
+                    <var name="To">
+                        <script>
+                            <![CDATA[
+                            var city;
+                            for (var i = 0; i < $To.length; i++) {
+                                var c = $To[i];
+                                city = !city || city.population < c.population ? c : city;
+                            }
+                            if (!city) city = $To;
+                            city.name;
+                        ]]>
+                        </script>
+                    </var>
+
+                    <var name="Date" value='fmt($Date, "dd.MM", $req_lang)'/>
+                    <var name="Back" value='fmt($Back, "dd.MM", $req_lang)' if="full($Back)"/>
+
+                    <output value="Ваши билеты из города $From в город $To на $Date и обратно на $Back будут стоить 40000 рублей. Билеты уже забронированы для вас. Сейчас вы будете переключены на оператора для завершения заказа. Оставайтесь на линии." if="full($Back)"/>
+                    <output value="Ваш билет из города $From в город $To на $Date будет стоить 20000 рублей. Билет уже забронирован для вас. Сейчас вы будете переключены на оператора для завершения заказа. Оставайтесь на линии."/>
+                </context>
+            </input>
+        </context>
+    </input>
+</context>
