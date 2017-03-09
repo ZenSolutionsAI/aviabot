@@ -1,15 +1,234 @@
 <context>
 
-    <pattern name="City" value="entity://cities"/>
+    <pattern name="City" value="entity://rucities"/>
 
     <input pattern="/start">
-        <output value="Здравствуйте! Вас приветствует авиакомпания Зенавиа. Здесь вы можете забронировать авиабилеты в любую точку мира. Скажите, куда вы желаете улететь?"/>
+        <output value="Здравствуйте! Вас приветствует авиакомпания Зенавиа. Здесь вы можете забронировать авиабилеты, найти багаж, узнать о ценах и скидках и получить ответ на любой вопрос."/>
 
         <context id="menu">
-            <input id="main">
-                <pattern value="* [$Date] * [$To::City] * [$Date] *"/>
-                <pattern value="* [$Date] * (из|от) * $From::City * [$Date] *"/>
-                <pattern value="* [$Date] * [из|от] * $From::City * $To::City * [$Date] *"/>
+            <input id="faq" pattern="*">
+
+                <context id="operator">
+                    <output value="Переключить вас на оператора для решения этого вопроса?"/>
+
+                    <input pattern="* (да|давай*|угу|ага|переключ*) *">
+                        <output value="Переключаю вас на оператора. Пожалуйста, оставайтесь на линии."/>
+                    </input>
+
+                    <input pattern="*">
+                        <output value="У вас остались ещё какие-нибудь вопросы?"/>
+
+                        <context>
+                            <input pattern="* (нет|не) *">
+                                <output value="Спасибо за ваш звонок. До свидания!"/>
+                                <context/>
+                            </input>
+                            <input pattern="* (да|ага|угу)">
+                                <output value="Пожалуйста, задайте ваш вопрос"/>
+                            </input>
+                        </context>
+                    </input>
+                </context>
+            </input>
+
+            <input id="luggage">
+                <pattern value="* багаж* * [$Date] * [[из] $From::City] * [[в|во|на|до] $To::City] * [$Date] *"/>
+
+                <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                <context id="luggage_from" if="empty($From)">
+                    <output value="Из какого города вы летели?"/>
+
+                    <input id="from">
+                        <pattern value="* [$Date] * [из|от] * $From::City * [[в|во|до] * $To::City] * [$Date] *"/>
+
+                        <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                        <context id="luggage_to" if="empty($To)"/>
+                        <context id="luggage_date" if="empty($Date)"/>
+                        <context id="luggage"/>
+                    </input>
+
+                    <input pattern="*" id="pricing_from_fail">
+                        <output value="Простите, не могли бы вы повторить название города прибытия?"/>
+                    </input>
+                </context>
+
+                <context id="luggage_to" if="empty($To)">
+                    <output value="В какой город вы летели?"/>
+
+                    <input id="to">
+                        <pattern value="* [$Date] * [до|в|во|на] * $To::City * [$Date] *"/>
+
+                        <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                        <context id="luggage_date" if="empty($Date)"/>
+                        <context id="luggage"/>
+                    </input>
+
+                    <input pattern="*" id="pricing_from_fail">
+                        <output value="Простите, не могли бы вы повторить название города прибытия?"/>
+                    </input>
+                </context>
+
+                <context id="luggage_date" if="empty($Date)">
+                    <output value="Когда был рейс?"/>
+                    <input pattern="* $Date *" id="date">
+                        <context id="luggage"/>
+                    </input>
+                    <input pattern="*" id="date_fail">
+                        <output value="Простите, не могли бы вы повторить дату рейса?"/>
+                    </input>
+                </context>
+
+                <context id="luggage">
+                    <var name="FromCity">
+                        <script>
+                            <![CDATA[
+                            var city;
+                            for (var i = 0; i < $From.length; i++) {
+                                var c = $From[i];
+                                city = !city || city.population < c.population ? c : city;
+                            }
+                            if (!city) city = $From;
+                            city.name;
+                        ]]>
+                        </script>
+                    </var>
+                    <var name="ToCity">
+                        <script>
+                            <![CDATA[
+                            var city;
+                            for (var i = 0; i < $To.length; i++) {
+                                var c = $To[i];
+                                city = !city || city.population < c.population ? c : city;
+                            }
+                            if (!city) city = $To;
+                            city.name;
+                        ]]>
+                        </script>
+                    </var>
+
+                    <var name="Date" value='fmt($Date, "dd.MM", $req_lang)'/>
+
+                    <output value="Спасибо. По вашему запросу создана заявка на поиск багажа на рейсе $FromCity - $ToCity от $Date. В ближайшее время с вами свяжется оператор, который поможет решить проблему. Оставайтесь на линии."/>
+
+                </context>
+            </input>
+
+            <input id="pricing">
+                <pattern value="* скидк* * [$Date] * [$To::City] * [$Date] *"/>
+                <pattern value="* скидк* * [$Date] * (из|от) * $From::City * [$Date] *"/>
+                <pattern value="* скидк* * [$Date] * [из|от] * $From::City * $To::City * [$Date] *"/>
+
+                <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                <context id="line" if="empty($To) and empty($From)">
+                    <output value="Какое направление вас интересует?"/>
+                    <input id="line">
+                        <pattern value="* [$Date] ((из|от) $From::City) [[в|во|до|на] * $To::City] * [$Date] *"/>
+                        <pattern value="* [$Date] * [из|от] * [$From::City] * [в|во|до|на] * $To::City * [$Date] *"/>
+
+                        <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                        <context id="line_to" if="empty($To)"/>
+                        <context id="line_from" if="empty($From)"/>
+                        <context id="price"/>
+                    </input>
+                    <input pattern="*" id="line_fail">
+                        <output value="Простите, не могли бы вы повторить направление перелёта?"/>
+                    </input>
+                </context>
+
+                <context id="line_to" if="empty($To)">
+                    <output value="Какой город прибытия вас интересует?"/>
+                    <input id="to">
+                        <pattern value="* $Date *"/>
+                        <pattern value="* [$Date] * [до|в|во|на] [город*] $To::City [[из] [город*] $From::City] * [$Date] *"/>
+                        <pattern value="* [$Date] (из|от) $From::City [[в|во|до] $To::City] * [$Date] *"/>
+
+                        <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                        <context id="line_to" if="empty($To)"/>
+                        <context id="line_from" if="empty($From)"/>
+                        <context id="price"/>
+                    </input>
+                    <input pattern="*" id="to_fail">
+                        <output value="Простите, не могли бы вы повторить название города отправления?"/>
+                    </input>
+                </context>
+
+                <context id="line_from" if="empty($From)">
+                    <output value="Какой город отправления вас интересует?"/>
+                    <input id="from">
+                        <pattern value="* [$Date] * [из|от] * $From::City * [[в|во|до] * $To::City] * [$Date] *"/>
+
+                        <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
+
+                        <context id="line_from" if="empty($From)"/>
+                        <context id="price"/>
+                    </input>
+
+                    <input pattern="*" id="pricing_from_fail">
+                        <output value="Простите, не могли бы вы повторить название города прибытия?"/>
+                    </input>
+                </context>
+
+                <context id="price">
+
+                    <var name="FromCity">
+                        <script>
+                            <![CDATA[
+                            var city;
+                            for (var i = 0; i < $From.length; i++) {
+                                var c = $From[i];
+                                city = !city || city.population < c.population ? c : city;
+                            }
+                            if (!city) city = $From;
+                            city.name;
+                        ]]>
+                        </script>
+                    </var>
+                    <var name="ToCity">
+                        <script>
+                            <![CDATA[
+                            var city;
+                            for (var i = 0; i < $To.length; i++) {
+                                var c = $To[i];
+                                city = !city || city.population < c.population ? c : city;
+                            }
+                            if (!city) city = $To;
+                            city.name;
+                        ]]>
+                        </script>
+                    </var>
+
+                    <output value="По направлению $FromCity - $ToCity действует сезонная скидка. Хотите забронировать билеты сейчас?"/>
+
+                    <input pattern="* (да|ага|угу|давай*|хочу|хотим|желаю) *">
+                        <context id="date" if="empty($Date) or past($Date)"/>
+                        <context id="back"/>
+                    </input>
+
+                    <input pattern="* (нет|не) *">
+                        <output value="Вы можете узнать обо всех скидках и ценах на нашем официальном сайте. У вас остались еще какие-нибудь вопросы?"/>
+                        <context>
+                            <input pattern="* (нет|не) *">
+                                <output value="Спасибо за ваш звонок. До свидания!"/>
+                                <context/>
+                            </input>
+                            <input pattern="* (да|ага|угу)">
+                                <output value="Пожалуйста, задайте ваш вопрос"/>
+                            </input>
+                        </context>
+                    </input>
+                </context>
+            </input>
+
+            <input id="order">
+                <pattern value="* [купи*|забронир*|приобрести|заказ*|закажи] * [билет*] * [$Date] * [$To::City] * [$Date] *"/>
+                <pattern value="* [купи*|забронир*|приобрести|заказ*|закажи] * [билет*] * [$Date] * (из|от) * $From::City * [$Date] *"/>
+                <pattern value="* [купи*|забронир*|приобрести|заказ*|закажи] * [билет*] * [$Date] * [из|от] * $From::City * $To::City * [$Date] *"/>
 
                 <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
 
