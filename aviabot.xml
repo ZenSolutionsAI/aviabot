@@ -134,8 +134,8 @@
                         </script>
                     </var>
 
-                    <var name="Date" value='fmt($Date, "dd.MM", $req_lang)' lang="ru"/>
-                    <var name="Back" value='fmt($Back, "dd.MM", $req_lang)' if="full($Back)" lang="ru"/>
+                    <var name="Date" value='fmt($Date, "dd MMMMMMMM", $req_lang)' lang="ru"/>
+                    <var name="Back" value='fmt($Back, "dd MMMMMMMM", $req_lang)' if="full($Back)" lang="ru"/>
 
                     <var name="Date" value='fmt($Date, "MM/dd", $req_lang)' lang="en"/>
                     <var name="Back" value='fmt($Back, "MM/dd", $req_lang)' if="full($Back)" lang="en"/>
