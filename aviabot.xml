@@ -12,7 +12,7 @@
                 <pattern value="* [$Date] * [$To::City] * [$Date] *"/>
                 <pattern value="* [$Date] * (из|от|from) * $From::City * [$Date] *"/>
                 <pattern value="* [$Date] * [из|от|from] * $From::City * $To::City * [$Date] *"/>
-                <pattern value="* [$Date] * [в|во|до|to|in] * $To::City * $From::City * [$Date] *"/>
+                <pattern value="* [$Date] * (в|во|до|to|in) * $To::City * $From::City * [$Date] *"/>
 
                 <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
 
