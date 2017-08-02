@@ -3,14 +3,15 @@
     <pattern name="City" value="entity://rucities"/>
 
     <input pattern="/start">
-        <output value="Здравствуйте! Вас приветствует авиа бот. Скажите, куда вы желаете улететь?" lang="ru"/>
+        <output value="Здравствуйте! Я помогу вам заказать авиабилеты. Скажите, в какой город вы желаете полететь?" channel="telegram"/>
+        <output value="Здравствуйте! Вас приветствует авиа бот. Скажите, куда вы желаете полететь?" lang="ru"/>
         <output value="Welcome to Zen solutions Airlines. Here you can book air tickets. Please tell me, where you wish to fly?"/>
 
         <context id="menu">
             <input id="main">
                 <pattern value="* [$Date] * [$To::City] * [$Date] *"/>
                 <pattern value="* [$Date] * (из|от|from) * $From::City * [$Date] *"/>
-                <pattern value="* [$Date] * [из|от|from] * $From::City * $To::City * [$Date] *"/>
+                <pattern value="* [$Date] * [из|от|from] * $From::City * [в|во|до|to|in] * $To::City * [$Date] *"/>
 
                 <var name="Date" value="get(0, $Date)" if="full($Date) and len($Date) gt 1" scope="context"/>
 
@@ -145,6 +146,13 @@
 
                     <output value="Thank you! Your tickets from $From to $To on $Date and back on $Back cost 2000 USD. Tickets are already booked for you. Our operator will complete your request in minutes. Please stay on the line." if="full($Back)"/>
                     <output value="Thank you! Your ticket from $From to $To on $Date costs 1000 USD. Ticket is already booked for you. Our operator will complete your request in minutes. Please stay on the line."/>
+
+                    <sample value="Новый заказ" channel="telegram"/>
+
+                    <input pattern="* новый заказ *">
+                        <output value="Скажите, в какой город вы желаете полететь?"/>
+                        <context id="menu"/>
+                    </input>
                 </context>
             </input>
         </context>
